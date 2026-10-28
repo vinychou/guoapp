@@ -21,8 +21,10 @@ env:
   GOTOOLCHAIN: auto
 jobs:
   ios:
-    # 必须是 macOS：Xcode 只在 macOS 上存在
-    runs-on: macos-15
+    # 必须是 macOS：Xcode 只在 macOS 上存在。
+    # 用 macOS 26 镜像（默认 Xcode 26.6）：video_player_avfoundation 2.12.x 用了
+    # Swift 6.2 的 `isolation:` 参数，macOS 15 镜像的 Xcode 16 编译不过。
+    runs-on: macos-26
     timeout-minutes: 90
     steps:
       - uses: actions/checkout@v4
