@@ -116,7 +116,8 @@ def main():
         ipa = output / f'{variant.slug}-{version}-ios-unsigned.ipa'
         if ipa.exists():
             ipa.unlink()
-        run(['ditto', '-c', '-k', '--sequesterRsrc', str(payload), str(ipa)])
+        # --keepParent 必须保留：ditto 默认只打包目录内容，缺了它 IPA 里不会有 Payload/ 外壳
+        run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent', str(payload), str(ipa)])
         shutil.rmtree(payload)
         artifacts.append(ipa)
     if not artifacts:
