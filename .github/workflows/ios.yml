@@ -59,6 +59,25 @@ jobs:
           if [ "${{ inputs.simulator_core }}" = "true" ]; then args="$args --simulator"; fi
           echo "build_ios.py 参数: [$args]"
           python3 scripts/build_ios.py $args
+      - name: 修正 IPA 外壳
+        # 上游 build_ios.py 用 `ditto -c -k <Payload>` 少了 --keepParent，
+        # 打出来的 .ipa 根目录直接是 Runner.app，没有 Payload/，Sideloadly 会拒收。
+        run: |
+          set -euo pipefail
+          cd dist/ios
+          for f in *-ios-unsigned.ipa; do
+            [ -f "$f" ] || continue
+            target="$PWD/$f"
+            work=$(mktemp -d)
+            mkdir -p "$work/Payload"
+            unzip -q "$target" -d "$work/Payload"
+            rm "$target"
+            ( cd "$work" && zip -q -r -y "$target" Payload )
+            rm -rf "$work"
+            echo "repacked $f -> $(unzip -l "$target" | sed -n '4p')"
+          done
+          shasum -a 256 *.ipa *.zip > SHA256SUMS.txt || true
+          cat SHA256SUMS.txt
       - name: 列出产物
         run: |
           set -euo pipefail
