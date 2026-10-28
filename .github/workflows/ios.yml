@@ -13,8 +13,8 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: ios-${{ github.ref }}
-  cancel-in-progress: true
+  group: ios-${{ github.ref }}-${{ inputs.all_sources }}
+  cancel-in-progress: false
 env:
   GOPROXY: https://goproxy.cn,https://proxy.golang.org,direct
   GOSUMDB: off
@@ -45,6 +45,10 @@ jobs:
           which pod || gem install cocoapods --no-document
           pod --version
           python3 --version
+      - name: 同步依赖锁文件
+        # 上游 pubspec.lock 与 Flutter 3.47.4 的解析结果有漂移，
+        # build_ios.py 里的 `flutter pub get --enforce-lockfile` 会直接失败（exit 65）。
+        run: flutter pub get
       - name: 构建未签名 IPA
         run: |
           set -euo pipefail
