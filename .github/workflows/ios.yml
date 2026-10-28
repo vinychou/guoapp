@@ -1,0 +1,66 @@
+name: Build iOS IPA (unsigned)
+on:
+  workflow_dispatch:
+    inputs:
+      all_sources:
+        description: '构建「真果鉴」全站源版（默认只红果）'
+        type: boolean
+        default: false
+      simulator_core:
+        description: '同时编译模拟器核心（一般不用）'
+        type: boolean
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: ios-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  GOPROXY: https://goproxy.cn,https://proxy.golang.org,direct
+  GOSUMDB: off
+  GOTOOLCHAIN: auto
+jobs:
+  ios:
+    # 必须是 macOS：Xcode 只在 macOS 上存在
+    runs-on: macos-15
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: native/go.mod
+          cache-dependency-path: native/go.sum
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: '3.47.4'
+          channel: stable
+          cache: true
+      - name: 检查工具链
+        run: |
+          set -euo pipefail
+          xcodebuild -version
+          xcode-select -p
+          go version
+          flutter --version
+          which pod || gem install cocoapods --no-document
+          pod --version
+          python3 --version
+      - name: 构建未签名 IPA
+        run: |
+          set -euo pipefail
+          args=""
+          if [ "${{ inputs.all_sources }}" = "true" ]; then args="$args --all-sources"; fi
+          if [ "${{ inputs.simulator_core }}" = "true" ]; then args="$args --simulator"; fi
+          echo "build_ios.py 参数: [$args]"
+          python3 scripts/build_ios.py $args
+      - name: 列出产物
+        run: |
+          set -euo pipefail
+          ls -lh dist/ios/ || true
+          cat dist/ios/SHA256SUMS.txt || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ios-unsigned
+          path: dist/ios/*
+          if-no-files-found: error
+          retention-days: 14
